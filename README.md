@@ -1,5 +1,12 @@
 # Azure Pipeline for building MS Official Ubuntu Pipeline Agent
 
+## Note
+I published this repo while writing an article on my webpage regarding Runners / Pipeline Agents.
+I have not used this code for a while so it might need some minor modifications.
+I will run this pipeline ensuring it still works 100% and update this repo as needed. 
+Have fun.
+
+
 ## Variable Group Setup  
 Create a variable group in Azure DevOps with these variables:  
 
