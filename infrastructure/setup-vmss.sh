@@ -2,7 +2,7 @@
 
 RESOURCE_GROUP="rg-agents"
 VMSS_NAME="vmss-kai-agents"
-LOCATION="eastus2"
+LOCATION="norwayeast"
 VNET_NAME="vnet-agents"
 SUBNET_NAME="subnet-agents"
 
