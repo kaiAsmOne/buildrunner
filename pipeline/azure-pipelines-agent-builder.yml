@@ -1,0 +1,117 @@
+#azure-pipelines-agent-builder.yml
+
+trigger:
+  branches:
+    include:
+    - main
+  paths:
+    include:
+    - agent-image/*
+
+schedules:
+- cron: "0 2 * * *"  # 02:00 daily
+  displayName: Nightly agent build
+  branches:
+    include:
+    - main
+  always: true
+
+variables:
+  agentVersion: '3.236.1'  # Check for latest at https://github.com/microsoft/azure-pipelines-agent/releases
+  resourceGroup: 'rg-agents'
+  location: 'norwayeast'
+  imageName: 'ubuntu-agent-$(Build.BuildId)'
+  imageGalleryName: 'agentImageGallery'
+  imageDefinitionName: 'UbuntuAgent'
+  vmssName: 'vmss-kai-agents'
+  agentPool: 'KaiAgents'
+
+stages:
+- stage: BuildAgentImage
+  displayName: 'Build Agent Image'
+  jobs:
+  - job: BuildImage
+    displayName: 'Build Ubuntu Agent Image'
+    pool:
+      vmImage: 'ubuntu-latest'
+    steps:
+    - task: AzureCLI@2
+      displayName: 'Create Packer Build Resources'
+      inputs:
+        azureSubscription: 'YourServiceConnection'
+        scriptType: 'bash'
+        scriptLocation: 'inlineScript'
+        inlineScript: |
+          # Create resource group if not exists
+          az group create -n $(resourceGroup) -l $(location) || true
+          
+          # Create shared image gallery if not exists
+          az sig create \
+            --resource-group $(resourceGroup) \
+            --gallery-name $(imageGalleryName) || true
+          
+          # Create image definition if not exists
+          az sig image-definition create \
+            --resource-group $(resourceGroup) \
+            --gallery-name $(imageGalleryName) \
+            --gallery-image-definition $(imageDefinitionName) \
+            --publisher Custom \
+            --offer UbuntuAgent \
+            --sku 22.04-LTS \
+            --os-type Linux \
+            --os-state Generalized || true
+
+    - task: PackerBuild@1
+      displayName: 'Build Agent Image with Packer'
+      inputs:
+        templateType: 'custom'
+        customTemplateLocation: '$(System.DefaultWorkingDirectory)/packer/ubuntu-agent.json'
+        customTemplateParameters: |
+          {
+            "client_id": "$(ARM_CLIENT_ID)",
+            "client_secret": "$(ARM_CLIENT_SECRET)",
+            "tenant_id": "$(ARM_TENANT_ID)",
+            "subscription_id": "$(ARM_SUBSCRIPTION_ID)",
+            "resource_group": "$(resourceGroup)",
+            "agent_version": "$(agentVersion)",
+            "agent_pool": "$(agentPool)",
+            "pat_token": "$(PAT_TOKEN)",
+            "organization_url": "$(ORGANIZATION_URL)"
+          }
+
+- stage: UpdateVMSS
+  displayName: 'Update VM Scale Set'
+  dependsOn: BuildAgentImage
+  condition: succeeded()
+  jobs:
+  - deployment: UpdateScaleSet
+    displayName: 'Update VMSS with new image'
+    environment: 'Production'
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+          - task: AzureCLI@2
+            displayName: 'Update VMSS Image'
+            inputs:
+              azureSubscription: 'YourServiceConnection'
+              scriptType: 'bash'
+              scriptLocation: 'inlineScript'
+              inlineScript: |
+                # Get the latest image version
+                IMAGE_VERSION=$(az sig image-version list \
+                  --resource-group $(resourceGroup) \
+                  --gallery-name $(imageGalleryName) \
+                  --gallery-image-definition $(imageDefinitionName) \
+                  --query "[-1].name" -o tsv)
+                
+                # Update VMSS with new image
+                az vmss update \
+                  --resource-group $(resourceGroup) \
+                  --name $(vmssName) \
+                  --set virtualMachineProfile.storageProfile.imageReference.id="/subscriptions/$(ARM_SUBSCRIPTION_ID)/resourceGroups/$(resourceGroup)/providers/Microsoft.Compute/galleries/$(imageGalleryName)/images/$(imageDefinitionName)/versions/$IMAGE_VERSION"
+                
+                # Start rolling upgrade
+                az vmss rolling-upgrade start \
+                  --resource-group $(resourceGroup) \
+                  --name $(vmssName)

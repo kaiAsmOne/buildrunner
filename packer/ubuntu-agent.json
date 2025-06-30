@@ -1,0 +1,70 @@
+{
+  "variables": {
+    "client_id": "",
+    "client_secret": "",
+    "tenant_id": "",
+    "subscription_id": "",
+    "resource_group": "",
+    "agent_version": "",
+    "agent_pool": "",
+    "pat_token": "",
+    "organization_url": ""
+  },
+  "builders": [{
+    "type": "azure-arm",
+    "client_id": "{{user `client_id`}}",
+    "client_secret": "{{user `client_secret`}}",
+    "tenant_id": "{{user `tenant_id`}}",
+    "subscription_id": "{{user `subscription_id`}}",
+    
+    "managed_image_resource_group_name": "{{user `resource_group`}}",
+    "managed_image_name": "ubuntu-agent-{{timestamp}}",
+    
+    "shared_image_gallery_destination": {
+      "subscription": "{{user `subscription_id`}}",
+      "resource_group": "{{user `resource_group`}}",
+      "gallery_name": "agentImageGallery",
+      "image_name": "UbuntuAgent",
+      "image_version": "1.0.{{timestamp}}",
+      "replication_regions": ["eastus2"]
+    },
+    
+    "os_type": "Linux",
+    "image_publisher": "Canonical",
+    "image_offer": "0001-com-ubuntu-server-jammy",
+    "image_sku": "22_04-lts-gen2",
+    
+    "location": "eastus2",
+    "vm_size": "Standard_D2s_v3"
+  }],
+  
+  "provisioners": [
+    {
+      "type": "shell",
+      "inline": [
+        "sudo apt-get update",
+        "sudo apt-get upgrade -y",
+        "sudo apt-get install -y curl git jq build-essential",
+        "sudo apt-get install -y docker.io",
+        "sudo systemctl enable docker",
+        "sudo usermod -aG docker azureuser"
+      ]
+    },
+    {
+      "type": "shell",
+      "script": "scripts/install-agent.sh",
+      "environment_vars": [
+        "AGENT_VERSION={{user `agent_version`}}",
+        "AGENT_POOL={{user `agent_pool`}}",
+        "PAT_TOKEN={{user `pat_token`}}",
+        "ORGANIZATION_URL={{user `organization_url`}}"
+      ]
+    },
+    {
+      "type": "shell",
+      "inline": [
+        "sudo waagent -deprovision+user -force"
+      ]
+    }
+  ]
+}
