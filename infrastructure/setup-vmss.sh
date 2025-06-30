@@ -10,9 +10,9 @@ SUBNET_NAME="subnet-agents"
 az network vnet create \
   --resource-group $RESOURCE_GROUP \
   --name $VNET_NAME \
-  --address-prefix 10.0.0.0/16 \
+  --address-prefix 10.65.0.0/16 \
   --subnet-name $SUBNET_NAME \
-  --subnet-prefix 10.0.1.0/24
+  --subnet-prefix 10.65.4.0/24
 
 # Create VMSS
 az vmss create \
