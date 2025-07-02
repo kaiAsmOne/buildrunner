@@ -1,0 +1,29 @@
+{
+  "provisioners": [
+    {
+      "type": "shell",
+      "inline": [
+        "echo 'Adding Azure DevOps Agent to Microsoft Runner Image...'",
+        "mkdir -p /agent",
+        "cd /agent",
+        "curl -LO https://vstsagentpackage.azureedge.net/agent/3.236.1/vsts-agent-linux-x64-3.236.1.tar.gz",
+        "tar xzf vsts-agent-linux-x64-3.236.1.tar.gz",
+        "rm vsts-agent-linux-x64-3.236.1.tar.gz",
+        "sudo ./bin/installdependencies.sh"
+      ]
+    },
+    {
+      "type": "file",
+      "source": "scripts/register-agent.sh",
+      "destination": "/tmp/register-agent.sh"
+    },
+    {
+      "type": "shell",
+      "inline": [
+        "sudo mv /tmp/register-agent.sh /usr/local/bin/",
+        "sudo chmod +x /usr/local/bin/register-agent.sh",
+        "echo '@reboot /usr/local/bin/register-agent.sh' | sudo crontab -"
+      ]
+    }
+  ]
+}

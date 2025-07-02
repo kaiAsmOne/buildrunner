@@ -1,0 +1,225 @@
+trigger:
+- main
+
+pool:
+  vmImage: 'ubuntu-22.04'
+
+variables:
+  # Azure Service Principal credentials
+  azureServiceConnection: 'YourServiceConnectionName' # Create this in Project Settings > Service connections
+  subscriptionId: '1d6d7107-9078-4340-a758-111fa5111111'
+  resourceGroupName: 'rg-DevOps-RunnerImages'
+  imageResourceGroup: 'rg-DevOps-CustomGalleryImage'
+  vmResourceGroup: 'rg-DevOps-MSAgent01'
+  location: 'Norway East'
+  galleryName: 'DevOpsRunnerImage'
+  imageDefinitionName: 'MS-DevOpsRunnerImage'
+  vmName: 'MS-DevOpsAgent01'
+  adminUsername: 'sicraadmin'
+
+stages:
+- stage: BuildRunnerImage
+  displayName: 'Build Runner Image with Packer'
+  jobs:
+  - job: BuildImage
+    displayName: 'Build Ubuntu 22.04 Runner Image'
+    timeoutInMinutes: 360
+    steps:
+    # Install Packer
+    - bash: |
+        wget -O- https://apt.releases.hashicorp.com/gpg | gpg --dearmor | sudo tee /usr/share/keyrings/hashicorp-archive-keyring.gpg
+        echo "deb [signed-by=/usr/share/keyrings/hashicorp-archive-keyring.gpg] https://apt.releases.hashicorp.com $(lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/hashicorp.list
+        sudo apt update && sudo apt install -y packer
+      displayName: 'Install Packer'
+
+    # Install prerequisites
+    - bash: |
+        sudo apt update
+        sudo apt upgrade -y
+        sudo apt install -y python3 python3-pip gcc git
+      displayName: 'Install Prerequisites'
+
+    # Install PowerShell
+    - bash: |
+        sudo apt-get update
+        sudo apt-get install -y wget apt-transport-https software-properties-common
+        wget -q "https://packages.microsoft.com/config/ubuntu/$(lsb_release -rs)/packages-microsoft-prod.deb"
+        sudo dpkg -i packages-microsoft-prod.deb
+        sudo apt-get update
+        sudo apt-get install -y powershell
+      displayName: 'Install PowerShell'
+
+    # Install Azure CLI (usually pre-installed on Microsoft-hosted agents)
+    - bash: |
+        sudo python3 -m pip install azure-cli
+      displayName: 'Install Azure CLI'
+
+    # Clone runner-images repository
+    - bash: |
+        git clone https://github.com/actions/runner-images.git
+      displayName: 'Clone runner-images repository'
+
+    # Install Az PowerShell module
+    - pwsh: |
+        Install-Module -Name Az -Repository PSGallery -Force -Scope CurrentUser
+      displayName: 'Install Az PowerShell Module'
+
+    # Generate Runner Image using PowerShell
+    - task: AzurePowerShell@5
+      displayName: 'Generate Runner Image with Packer'
+      inputs:
+        azureSubscription: $(azureServiceConnection)
+        ScriptType: 'InlineScript'
+        Inline: |
+          Set-Location $(System.DefaultWorkingDirectory)/runner-images
+          Import-Module .\helpers\GenerateResourcesAndImage.ps1
+          
+          # Get service principal details from the service connection
+          $context = Get-AzContext
+          $azureClientId = $context.Account.Id
+          $azureTenantId = $context.Tenant.Id
+          
+          # Note: For the client secret, you'll need to pass it securely
+          # Consider using a secure variable or Key Vault
+          GenerateResourcesAndImage `
+            -SubscriptionId "$(subscriptionId)" `
+            -ResourceGroupName "$(resourceGroupName)" `
+            -ImageGenerationRepositoryRoot "$pwd" `
+            -ImageType Ubuntu2204 `
+            -AzureLocation "$(location)" `
+            -AzureClientId $azureClientId `
+            -AzureClientSecret "$(azureClientSecret)" `
+            -AzureTenantId $azureTenantId
+        azurePowerShellVersion: 'LatestVersion'
+
+- stage: CreateVMFromImage
+  displayName: 'Create VM from Packer Image'
+  dependsOn: BuildRunnerImage
+  jobs:
+  - job: CreateVM
+    displayName: 'Create Azure VM'
+    steps:
+    - checkout: self
+    
+    # Clone runner-images repository again (new job)
+    - bash: |
+        git clone https://github.com/actions/runner-images.git
+      displayName: 'Clone runner-images repository'
+
+    # Create VM from Packer template
+    - task: AzurePowerShell@5
+      displayName: 'Create VM from Packer Template'
+      inputs:
+        azureSubscription: $(azureServiceConnection)
+        ScriptType: 'InlineScript'
+        Inline: |
+          Set-Location $(System.DefaultWorkingDirectory)/runner-images
+          Import-Module .\helpers\CreateAzureVMFromPackerTemplate.ps1
+          
+          # Create resource group if it doesn't exist
+          $rg = Get-AzResourceGroup -Name "$(vmResourceGroup)" -ErrorAction SilentlyContinue
+          if (-not $rg) {
+            New-AzResourceGroup -Name "$(vmResourceGroup)" -Location "$(location)"
+          }
+          
+          # Create VM from template
+          CreateAzureVMFromPackerTemplate `
+            -SubscriptionId "$(subscriptionId)" `
+            -ResourceGroupName "$(vmResourceGroup)" `
+            -TemplateFile "$(System.DefaultWorkingDirectory)/BuildVmImages/temporaryTemplate.json" `
+            -VirtualMachineName "$(vmName)" `
+            -AdminUsername "$(adminUsername)" `
+            -AdminPassword "$(adminPassword)" `
+            -AzureLocation "$(location)"
+        azurePowerShellVersion: 'LatestVersion'
+
+- stage: CreateCustomGalleryImage
+  displayName: 'Create Custom Gallery Image'
+  dependsOn: CreateVMFromImage
+  jobs:
+  - job: CreateGallery
+    displayName: 'Create Image Gallery and Definition'
+    steps:
+    # Create Image Gallery
+    - task: AzureCLI@2
+      displayName: 'Create Resource Group and Image Gallery'
+      inputs:
+        azureSubscription: $(azureServiceConnection)
+        scriptType: 'bash'
+        scriptLocation: 'inlineScript'
+        inlineScript: |
+          # Create resource group for gallery
+          az group create --name $(imageResourceGroup) --location "$(location)"
+          
+          # Create shared image gallery
+          az sig create \
+            --resource-group $(imageResourceGroup) \
+            --gallery-name $(galleryName)
+
+    # Create Image Definition
+    - task: AzureCLI@2
+      displayName: 'Create Image Definition'
+      inputs:
+        azureSubscription: $(azureServiceConnection)
+        scriptType: 'bash'
+        scriptLocation: 'inlineScript'
+        inlineScript: |
+          az sig image-definition create \
+            --resource-group $(imageResourceGroup) \
+            --gallery-name $(galleryName) \
+            --gallery-image-definition $(imageDefinitionName) \
+            --publisher MicrosoftOpenSource \
+            --offer ubuntu-runner \
+            --sku ubuntu-runner \
+            --os-type Linux \
+            --os-state specialized
+
+    # Deallocate VM before creating image
+    - task: AzureCLI@2
+      displayName: 'Deallocate VM'
+      inputs:
+        azureSubscription: $(azureServiceConnection)
+        scriptType: 'bash'
+        scriptLocation: 'inlineScript'
+        inlineScript: |
+          az vm deallocate \
+            --resource-group $(vmResourceGroup) \
+            --name $(vmName)
+
+    # Create Image Version
+    - task: AzureCLI@2
+      displayName: 'Create Image Version'
+      inputs:
+        azureSubscription: $(azureServiceConnection)
+        scriptType: 'bash'
+        scriptLocation: 'inlineScript'
+        inlineScript: |
+          # Get VM ID
+          vmId=$(az vm show -g $(vmResourceGroup) -n $(vmName) --query id -o tsv)
+          
+          # Create image version
+          az sig image-version create \
+            --resource-group $(imageResourceGroup) \
+            --gallery-name $(galleryName) \
+            --gallery-image-definition $(imageDefinitionName) \
+            --gallery-image-version 1.0.0 \
+            --target-regions "$(location)" \
+            --replica-count 2 \
+            --managed-image $vmId
+
+    # Output the gallery image ID for reference
+    - task: AzureCLI@2
+      displayName: 'Get Gallery Image ID'
+      inputs:
+        azureSubscription: $(azureServiceConnection)
+        scriptType: 'bash'
+        scriptLocation: 'inlineScript'
+        inlineScript: |
+          imageId=$(az sig image-definition show \
+            --resource-group $(imageResourceGroup) \
+            --gallery-name $(galleryName) \
+            --gallery-image-definition $(imageDefinitionName) \
+            --query id -o tsv)
+          
+          echo "Gallery Image ID: $imageId"
+          echo "##vso[task.setvariable variable=galleryImageId;isOutput=true]$imageId"

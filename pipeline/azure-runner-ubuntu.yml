@@ -1,0 +1,67 @@
+trigger:
+  branches:
+    include:
+    - main
+
+schedules:
+- cron: "0 2 * * *"  # 2 AM daily
+  displayName: Nightly runner image build
+  branches:
+    include:
+    - main
+  always: true
+
+variables:
+  resourceGroup: 'rg-agents'
+  location: 'eastus2'
+  imageGalleryName: 'agentImageGallery'
+  imageDefinitionName: 'Ubuntu2204'
+  vmssName: 'vmss-kai-agents'
+  agentPool: 'KaiAgents'
+  runnerImagesRepo: 'https://github.com/actions/runner-images.git'
+  runnerImagesRef: 'main'  # or specific release tag
+
+stages:
+- stage: BuildRunnerImage
+  displayName: 'Build Microsoft-Compatible Runner Image'
+  jobs:
+  - job: BuildImage
+    displayName: 'Build Ubuntu 22.04 Runner Image'
+    pool:
+      vmImage: 'ubuntu-latest'
+    timeoutInMinutes: 180  # These builds can take a while
+    steps:
+    - task: AzureCLI@2
+      displayName: 'Setup Azure Resources'
+      inputs:
+        azureSubscription: 'YourServiceConnection'
+        scriptType: 'bash'
+        scriptLocation: 'inlineScript'
+        inlineScript: |
+          # Create resource group if not exists
+          az group create -n $(resourceGroup) -l $(location) || true
+          
+          # Create shared image gallery if not exists
+          az sig create \
+            --resource-group $(resourceGroup) \
+            --gallery-name $(imageGalleryName) || true
+          
+          # Create image definition if not exists
+          az sig image-definition create \
+            --resource-group $(resourceGroup) \
+            --gallery-name $(imageGalleryName) \
+            --gallery-image-definition $(imageDefinitionName) \
+            --publisher Microsoft \
+            --offer UbuntuServer \
+            --sku 22.04-LTS \
+            --os-type Linux \
+            --os-state Generalized || true
+
+    - script: |
+        # Clone runner-images repository
+        git clone $(runnerImagesRepo) runner-images
+        cd runner-images
+        git checkout $(runnerImagesRef)
+        
+        # Copy our custom configuration
+        cp $(System.DefaultWorkingDirectory)/packer/azure-devops-config.json images/ubuntu/templates/
