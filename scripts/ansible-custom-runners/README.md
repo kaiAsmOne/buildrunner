@@ -1,6 +1,14 @@
-###This script will Build a Complete Azure DevOps Custom Agent for Ansible.  
+#This script will Build a Complete Azure DevOps Custom Agent for Ansible.  
 
-The Build Agent will Support Azure Cloud, Google Cloud and onprem. 
+The scripts in this folder are runners i used in the past before understanding the benefit of using the Official github / Azure Runners. Deploy a CentOS or Fedora machine and run one of the scripts in this folder.  
+Each file represents one variation of a custom runner.  
+
+I have included these scripts in case someone can learn from or use them.  
+  
+The Build Agent will Support Azure Cloud, Google Cloud and onprem.
+  
+  
+## Parameters for the different Scripts.  
 
 The script takes 9 parameters
 
@@ -33,4 +41,5 @@ After successful installation the script will also install Azure DevOps Pipeline
 
 To Aquire a Azure DevOps PAT see https://docs.microsoft.com/en-us/azure/devops/pipelines/agents/v2-linux?view=azure-devopscheck-prerequisites
 
-Written by Kai Thorsrud
+
+kai@thorsrud.io
