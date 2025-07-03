@@ -1,14 +1,21 @@
 # DevOps Build Environments  
-This repo is a collection of scripts, terraform code or solutions in general  
+This repo is a collection of Azure DevOps Pipelines, Scripts, Terraform code or work in general  
 relaterd to Build Environments for Azure DevOps Private Build Agents usually refered to as Runners.  
 
 I published this repo while writing an blog post Regarding Runners / Pipeline Agents.  
 The article is hosted here https://www.thorsrud.io/modern-architecture-and-hybrid-environments-automating-self-hosted-agents-for-azure/  
   
-  
-I have not used this code for a while so it might need some minor modifications.
-I will run this pipeline ensuring it still works 100% and update this repo as needed. 
 
+I have not used this code for a while so it might need some minor modifications.
+I will run this pipeline ensuring it still works 100% and update this repo as needed.  
+In this repo you will also find how to create a private runner for Ansible on Fedora or Ubuntu  
+for use with Azure, Google Cloud and OnPrem. 
+You will also find terraform code to create an Azure DevOps project for Runners.
+  
+  
+Currently i only use MS Official Runner (The Gitlab runner image)  
+I build fresh runners from the official repo every night  
+My blog post above explains why I advice you to do the same.  
 
 
 # Azure Pipeline for building MS Official Ubuntu Pipeline Agent
