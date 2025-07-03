@@ -18,12 +18,12 @@ I build fresh runners from the official repo every night
 My blog post above explains why I advice you to do the same.  
 
 
-# Azure Pipeline for building MS Official Ubuntu Pipeline Agent
+## Azure Pipeline for building MS Official Ubuntu Pipeline Agent
 
-## Note
+### Note
 
 
-## Variable Group Setup  
+### Variable Group Setup  
 Create a variable group in Azure DevOps with these variables:  
 
 ARM_CLIENT_ID: Service Principal Client ID  
@@ -34,7 +34,7 @@ PAT_TOKEN: Personal Access Token for agent registration (mark as secret)
 ORGANIZATION_URL: Your Azure DevOps organization URL  
 
     
-## Key Features Implemented:  
+### Key Features Implemented:  
   
 Automated Build: The pipeline builds a custom Ubuntu agent with all necessary tools  
 Auto-Registration: Agents automatically register to the KaiAgents pool on startup  
