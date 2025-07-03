@@ -1,10 +1,19 @@
+# DevOps Build Environments  
+This repo is a collection of scripts, terraform code or solutions in general  
+relaterd to Build Environments for Azure DevOps Private Build Agents usually refered to as Runners.  
+
+I published this repo while writing an blog post Regarding Runners / Pipeline Agents.  
+The article is hosted here https://www.thorsrud.io/modern-architecture-and-hybrid-environments-automating-self-hosted-agents-for-azure/  
+  
+  
+I have not used this code for a while so it might need some minor modifications.
+I will run this pipeline ensuring it still works 100% and update this repo as needed. 
+
+
+
 # Azure Pipeline for building MS Official Ubuntu Pipeline Agent
 
 ## Note
-I published this repo while writing an article on my webpage regarding Runners / Pipeline Agents.
-I have not used this code for a while so it might need some minor modifications.
-I will run this pipeline ensuring it still works 100% and update this repo as needed. 
-Have fun.
 
 
 ## Variable Group Setup  
