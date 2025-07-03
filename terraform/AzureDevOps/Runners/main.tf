@@ -1,3 +1,5 @@
+# Using Terraform to create
+
 terraform {
   required_providers {
     azuredevops = {
@@ -12,24 +14,9 @@ provider "azuredevops" {
 # pat_token should be set via environment variable AZDO_PERSONAL_ACCESS_TOKEN if running locally
   personal_access_token = var.azure_devops_pat
 }
-variable "azure_devops_org_url" {
-  description = "Azure DevOps Organization URL"
-  type        = string
-}
-
-variable "azure_devops_pat" {
-  description = "Azure DevOps Personal Access Token"
-  type        = string
-  sensitive   = true
-}
-
-locals {
-  azure_devops_org_url = "https://dev.azure.com/kai0411/"
-  azure_devops_pat = ""
-}
 # Create the project following Cloud Adoption Framework
 resource "azuredevops_project" "plz_msrunners" {
-  name        = "plz-msrunners"
+  name        = "DevOpsRunners"
   description = "Project to automate build process and deployment of MS Official Runners"
   visibility  = "private"
 
