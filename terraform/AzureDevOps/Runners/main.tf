@@ -9,10 +9,9 @@ terraform {
 
 provider "azuredevops" {
   org_service_url       = var.azure_devops_org_url
+# pat_token should be set via environment variable AZDO_PERSONAL_ACCESS_TOKEN if running locally
   personal_access_token = var.azure_devops_pat
 }
-
-# Variables
 variable "azure_devops_org_url" {
   description = "Azure DevOps Organization URL"
   type        = string
@@ -24,10 +23,14 @@ variable "azure_devops_pat" {
   sensitive   = true
 }
 
+locals {
+  azure_devops_org_url = "https://dev.azure.com/kai0411/"
+  azure_devops_pat = ""
+}
 # Create the project following Cloud Adoption Framework
 resource "azuredevops_project" "plz_msrunners" {
   name        = "plz-msrunners"
-  description = "Microsoft Azure Cloud Adoption Framework - Self-hosted Runners Project"
+  description = "Project to automate build process and deployment of MS Official Runners"
   visibility  = "private"
 
   version_control    = "Git"
@@ -132,7 +135,7 @@ resource "azuredevops_build_definition" "pipeline_runner" {
 resource "azuredevops_git_repository_branch" "develop" {
   repository_id = azuredevops_git_repository.plz_msrunners_repo.id
   name          = "develop"
-  source_branch = "master"
+  ref_branch    = "master"
 }
 
 # Create feature branch policy template following CAF
