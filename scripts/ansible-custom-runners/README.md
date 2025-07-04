@@ -1,11 +1,11 @@
-#This script will Build a Complete Azure DevOps Custom Agent for Ansible.  
+# Build Custom Runners for Ansible.  
 
 The scripts in this folder are runners i used in the past before understanding the benefit of using the Official github / Azure Runners. Deploy a CentOS or Fedora machine and run one of the scripts in this folder.  
 Each file represents one variation of a custom runner.  
 
 I have included these scripts in case someone can learn from or use them.  
   
-The Build Agent will Support Azure Cloud, Google Cloud and onprem.
+The Runner will Support Azure Cloud, Google Cloud and onprem.
   
   
 ## Parameters for the different Scripts.  
@@ -33,7 +33,7 @@ The script takes 9 parameters
 
 
 
-This Script will install all required software for a working  Ansible Environment to Execute Ansible Scripts in Azure.
+This Script will install all required software for a working  Ansible Environment to Execute Ansible Scripts in Azure , GCP and On Prem.  
 
 The script will authenticate with azure cli using service principle name.
 
