@@ -6,6 +6,6 @@ This is pretty self explaining by looking at the code. use a terraform.tfvars si
   
 Example terraform.tfvars  
 
-! ( pat_token should be set via environment variable AZDO_PERSONAL_ACCESS_TOKEN )
-azure_devops_pat = "YourPAT"
-azure_devops_org_url = "https://dev.azure.com/org/"
+! ( pat_token should be set via environment variable AZDO_PERSONAL_ACCESS_TOKEN )  
+azure_devops_pat = "YourPAT"  
+azure_devops_org_url = "https://dev.azure.com/org/"  
