@@ -11,6 +11,8 @@ I advise you to start by executing the terraform code in /terraform/AzureDevOps/
 The terraform code will create an AzureDevOps Project following MS CAF.  
 Read the README.md in the /terraform/AzureDevOps/Runners/ folder for instructions.  
   
+The Terraform code is a good way to automate Azure DevOps project creation in general.  
+  
    
 When the Terraform code is applied you can copy the files in this repo to your new AzureDevOps Project.  
 You will then have an Azure DevOps project with a pipeline building new MS Official Runners every night at 02:00 .  
