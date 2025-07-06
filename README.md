@@ -6,11 +6,22 @@ I published this repo while writing an blog post Regarding Runners / Pipeline Ag
 The article is hosted here https://www.thorsrud.io/modern-architecture-and-hybrid-environments-automating-self-hosted-agents-for-azure/  
   
 
-I have not used this code for a while so it might need some minor modifications.
-I will run this pipeline ensuring it still works 100% and update this repo as needed.  
-In this repo you will also find how to create a private runner for Ansible on Fedora or Ubuntu  
-for use with Azure, Google Cloud and OnPrem. 
-You will also find terraform code to create an Azure DevOps project for Runners.
+## Note  
+I advise you to start by executing the terraform code in /terraform/AzureDevOps/Runners.  
+The terraform code will create an AzureDevOps project following MS CAF along with a Service Connection to Azure.  
+Read the readme.md in the /terraform/AzureDevOps/Runners/ folder for instructions.  
+  
+   
+When the Terraform code is applied you can copy the files in this repo to your new AzureDevOps Project.  
+You will then have an Azure DevOps project with a pipeline building new MS Official Runners every night at 02:00 .  
+The pipeline will create all the neccesary resources in Azure or update them if they already exists. 
+Your end result will be a fully working private runner always up to date with the latest release from Microsoft repo https://github.com/Microsoft/azure-pipelines-agent/  
+  
+
+
+In this repo you will also find shell scripts that can be executed on a clean Fedora / CentOs / Ubuntu VM in Azure creating a fully working custom runner environment for Ansible and Terraform ready to be used with Azure, Google Cloud and OnPrem.  
+The shell script are from 2016 before i learned the hard way why you should use the MS Official Runners instead of managing your own custom runner.    
+The scripts are added in case someone can make use of them.  
   
   
 Currently i only use MS Official Runner (The Gitlab runner image)  
