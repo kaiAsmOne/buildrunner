@@ -20,7 +20,7 @@ Your end result will be a fully working private runner always up to date with th
 ( https://github.com/Microsoft/azure-pipelines-agent/  )  
 
 
-In this repo you will also find shell scripts that can be executed on a clean Fedora / CentOs / Ubuntu VM in creating a fully working custom runner environment for Ansible and Terraform ready to be used with Azure, Google Cloud and OnPrem.  
+In this repo you will also find shell scripts that can be executed on a clean Fedora / CentOs / Ubuntu VM , creating a fully working custom runner environment for Ansible and Terraform ready to be used with Azure, Google Cloud and OnPrem.  
 The shell script are from 2016 before i learned the hard way why you should use the MS Official Runners instead of managing your own custom runner.    
 The scripts are added in case someone can make use of them.  
   
