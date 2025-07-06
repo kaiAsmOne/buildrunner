@@ -1,4 +1,15 @@
 # DevOps Build Environments  
+This repository will allow you to start with a simple git clone to your machine.  
+Followed by executing my Terraform Code.  
+The Terraform Code will Then Create an Azure DevOps Project following MS CAF.  
+  
+Creating a Service Connection from Azure DevOps to the Azure Subscription specified in the Terraform Variables.  
+With a pipeline that auto creates MS Official Runners in you Azure Subscription specified in the Terraform Variables.  
+Creating all resources in Azure Automatically for you.  
+With scheduled auto updates every night at 02:00.  
+  
+Furthermore:    
+
 This repo is a collection of Azure DevOps Pipelines, Scripts, Terraform code or work in general  
 relaterd to Build Environments for Azure DevOps Private Build Agents usually refered to as Runners.  
 
