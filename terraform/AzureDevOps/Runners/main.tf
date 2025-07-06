@@ -172,6 +172,47 @@ resource "azuredevops_variable_group" "pipeline_config" {
     is_secret    = true
   }
 }
+# Get current subscription
+data "azurerm_subscription" "current" {}
+
+# Create an Azure AD Application
+resource "azuread_application" "service_connection" {
+  display_name = "azdo-service-connection-app"
+}
+# Create a Service Principal for the Application
+resource "azuread_service_principal" "service_connection" {
+  client_id = azuread_application.service_connection.client_id
+}
+
+# Create a Service Principal Password
+resource "azuread_service_principal_password" "service_connection" {
+  service_principal_id = azuread_service_principal.service_connection.id
+}
+
+
+# Assign Contributor role to the service principal
+resource "azurerm_role_assignment" "service_connection_contributor" {
+  scope                = data.azurerm_subscription.current.id
+  role_definition_name = "Contributor"
+  principal_id         = azuread_service_principal.service_connection.id
+}
+
+# Create the Azure Resource Manager service connection
+resource "azuredevops_serviceendpoint_azurerm" "your-service-connection" {
+  project_id                = azuredevops_project.plz_msrunners.id
+  service_endpoint_name     = "your-service-connection"
+  description               = "Service connection for Azure Resource Manager"
+  
+  credentials {
+    serviceprincipalid  = azuread_application.service_connection.client_id
+    serviceprincipalkey = azuread_service_principal_password.service_connection.value
+  }
+  
+  azurerm_spn_tenantid      = data.azurerm_subscription.current.tenant_id
+  azurerm_subscription_id   = data.azurerm_subscription.current.subscription_id
+  azurerm_subscription_name = data.azurerm_subscription.current.display_name
+}
+
 
 # Outputs
 output "project_id" {
@@ -192,4 +233,8 @@ output "pipeline_id" {
 output "project_url" {
   description = "URL to the project"
   value       = "${var.azure_devops_org_url}/${azuredevops_project.plz_msrunners.name}"
+}
+
+output "service_connection_id" {
+  value = azuredevops_serviceendpoint_azurerm.your-service-connection.id
 }

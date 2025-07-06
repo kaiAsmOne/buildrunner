@@ -9,6 +9,10 @@ terraform {
       source  = "hashicorp/azurerm"
       version = "~> 4.21"
     }
+    azuread = {
+      source  = "hashicorp/azuread"
+      version = "~> 2.46"
+    }    
     time = {
       source  = "hashicorp/time"
       version = "~> 0.7"
@@ -27,9 +31,12 @@ provider "azurerm" {
   subscription_id = var.subscription_id
   tenant_id       = var.tenant_id
 }
+provider "azuread" {
+  tenant_id = var.tenant_id
+}
+
 provider "azuredevops" {
   org_service_url       = var.azure_devops_org_url
-# pat_token should be set via environment variable AZDO_PERSONAL_ACCESS_TOKEN if running locally
   personal_access_token = var.azure_devops_pat
 }
 provider "time" {}
