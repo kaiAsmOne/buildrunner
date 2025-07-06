@@ -20,9 +20,12 @@ resource "azuredevops_project" "plz_msrunners" {
 resource "azuredevops_git_repository" "plz_msrunners_repo" {
   project_id = azuredevops_project.plz_msrunners.id
   name       = "plz-msrunners"
+  default_branch = "refs/heads/main"
 
   initialization {
-    init_type = "Clean"
+    init_type   = "Import"
+    source_type = "Git"
+    source_url  = "https://github.com/kaiAsmOne/buildrunner.git"
   }
 }
 
@@ -106,7 +109,7 @@ resource "azuredevops_build_definition" "pipeline_runner" {
 resource "azuredevops_git_repository_branch" "develop" {
   repository_id = azuredevops_git_repository.plz_msrunners_repo.id
   name          = "develop"
-  ref_branch    = "master"
+  ref_branch    = "refs/heads/main"
 }
 
 # Create feature branch policy template following CAF
@@ -172,6 +175,8 @@ resource "azuredevops_variable_group" "pipeline_config" {
     is_secret    = true
   }
 }
+
+# Create a Service Connection to AzureRM
 # Get current subscription
 data "azurerm_subscription" "current" {}
 
