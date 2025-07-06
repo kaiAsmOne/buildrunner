@@ -14,8 +14,10 @@ Read the README.md in the /terraform/AzureDevOps/Runners/ folder for instruction
 The Terraform code is a good way to automate Azure DevOps project creation in general.  
   
    
-When the Terraform code is applied you can copy the files in this repo to your new AzureDevOps Project.  
-You will then have an Azure DevOps project with a pipeline building new MS Official Runners every night at 02:00 .  
+When the Terraform code is applied you will then have an Azure DevOps Project  
+* With a Repository initialized with a clone of this project on github.  
+* With a pipeline building new MS Official Runners every night at 02:00.  
+  
 The pipeline will create all the neccesary resources in Azure or update them if they already exists.  
   
 Your end result will be a fully working private runner always up to date with the latest release from Microsoft  
