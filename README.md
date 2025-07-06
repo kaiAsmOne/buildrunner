@@ -7,9 +7,9 @@ The article is hosted here https://www.thorsrud.io/modern-architecture-and-hybri
   
 
 ## Note  
-I advise you to start by executing the terraform code in /terraform/AzureDevOps/Runners.  
-The terraform code will create an AzureDevOps project following MS CAF along with a Service Connection to Azure.  
-Read the readme.md in the /terraform/AzureDevOps/Runners/ folder for instructions.  
+I advise you to start by executing the terraform code in /terraform/AzureDevOps/Runners/    
+The terraform code will create an AzureDevOps Project following MS CAF.  
+Read the README.md in the /terraform/AzureDevOps/Runners/ folder for instructions.  
   
    
 When the Terraform code is applied you can copy the files in this repo to your new AzureDevOps Project.  
