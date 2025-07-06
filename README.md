@@ -16,7 +16,8 @@ When the Terraform code is applied you can copy the files in this repo to your n
 You will then have an Azure DevOps project with a pipeline building new MS Official Runners every night at 02:00 .  
 The pipeline will create all the neccesary resources in Azure or update them if they already exists.  
   
-Your end result will be a fully working private runner always up to date with the latest release from Microsoft ( https://github.com/Microsoft/azure-pipelines-agent/  )
+Your end result will be a fully working private runner always up to date with the latest release from Microsoft  
+( https://github.com/Microsoft/azure-pipelines-agent/  )  
 
 
 In this repo you will also find shell scripts that can be executed on a clean Fedora / CentOs / Ubuntu VM in Azure creating a fully working custom runner environment for Ansible and Terraform ready to be used with Azure, Google Cloud and OnPrem.  
