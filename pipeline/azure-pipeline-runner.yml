@@ -23,6 +23,7 @@ variables:
   resourceGroupName: 'kai-agents-rg'
   imageResourceGroup: 'kai-images-rg'
   customImageName: 'kai-custom-agent-$(Build.BuildNumber)'
+  Agent.WorkFolder: /home/kaithors/agent/_work
 
 pool:
   vmImage: 'ubuntu-latest'
