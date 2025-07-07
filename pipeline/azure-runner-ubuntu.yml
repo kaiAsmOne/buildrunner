@@ -17,7 +17,7 @@ variables:
   imageGalleryName: 'agentImageGallery'
   imageDefinitionName: 'Ubuntu2204'
   vmssName: 'vmss-kai-agents'
-  agentPool: 'KaiAgents'
+  agentPool: 'KaisPool'
   runnerImagesRepo: 'https://github.com/actions/runner-images.git'
   runnerImagesRef: 'main'  # or specific release tag
 

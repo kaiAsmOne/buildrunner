@@ -22,7 +22,7 @@ variables:
   imageGalleryName: 'agentImageGallery'
   imageDefinitionName: 'UbuntuAgent'
   vmssName: 'vmss-kai-agents'
-  agentPool: 'KaiAgents'
+  agentPool: 'KaisPool'
 
 stages:
 - stage: BuildAgentImage
