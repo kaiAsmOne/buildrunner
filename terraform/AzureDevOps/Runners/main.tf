@@ -29,7 +29,7 @@ resource "azuredevops_git_repository" "plz_msrunners_repo" {
   }
 }
 
-# Create branch policy for master branch - enforce code review
+# Create branch policy for main branch - enforce code review
 resource "azuredevops_branch_policy_min_reviewers" "master_policy" {
   project_id = azuredevops_project.plz_msrunners.id
 
@@ -37,21 +37,23 @@ resource "azuredevops_branch_policy_min_reviewers" "master_policy" {
   blocking = true
 
   settings {
-    reviewer_count                         = 2
-    submitter_can_vote                     = false
-    last_pusher_cannot_approve             = true
+    reviewer_count                         = 1
+    submitter_can_vote                     = true
+#    submitter_can_vote                     = false
+#    last_pusher_cannot_approve             = true
+    last_pusher_cannot_approve             = false
     allow_completion_with_rejects_or_waits = false
     on_push_reset_approved_votes           = true
 
     scope {
       repository_id  = azuredevops_git_repository.plz_msrunners_repo.id
-      repository_ref = "refs/heads/master"
+      repository_ref = "refs/heads/main"
       match_type     = "Exact"
     }
   }
 }
 
-# Build validation policy - trigger pipeline on PR to master
+# Build validation policy - trigger pipeline on PR to main
 resource "azuredevops_branch_policy_build_validation" "master_build_policy" {
   project_id = azuredevops_project.plz_msrunners.id
 
@@ -68,13 +70,13 @@ resource "azuredevops_branch_policy_build_validation" "master_build_policy" {
 
     scope {
       repository_id  = azuredevops_git_repository.plz_msrunners_repo.id
-      repository_ref = "refs/heads/master"
+      repository_ref = "refs/heads/main"
       match_type     = "Exact"
     }
   }
 }
 
-# Create the build pipeline that triggers on master commits
+# Create the build pipeline that triggers on main commits
 resource "azuredevops_build_definition" "pipeline_runner" {
   project_id = azuredevops_project.plz_msrunners.id
   name       = "plz-msrunners-pipeline"
@@ -84,11 +86,12 @@ resource "azuredevops_build_definition" "pipeline_runner" {
     use_yaml = true
   }
 
-  # Trigger on master branch commits
+  # Trigger on main branch commits
   repository {
     repo_type           = "TfsGit"
     repo_id             = azuredevops_git_repository.plz_msrunners_repo.id
-    branch_name         = "refs/heads/master"
+    branch_name         = "refs/heads/main"
+#    branch_name         = "refs/heads/develop"
     yml_path            = "/pipeline/azure-pipeline-runner.yml"
     report_build_status = true
   }

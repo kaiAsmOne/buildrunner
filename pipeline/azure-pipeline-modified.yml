@@ -13,7 +13,7 @@ schedules:
 
 variables:
   resourceGroup: 'rg-agents'
-  location: 'norwayeast'
+  location: 'eastus2'
   imageGalleryName: 'agentImageGallery'
   imageDefinitionName: 'Ubuntu2204'
   vmssName: 'vmss-kai-agents'
@@ -65,3 +65,34 @@ stages:
         
         # Copy our custom configuration
         cp $(System.DefaultWorkingDirectory)/packer/azure-devops-config.json images/ubuntu/templates/
+      displayName: 'Clone Runner Images Repository'
+
+    - task: PackerBuild@1
+      displayName: 'Build Runner Image with Packer'
+      inputs:
+        templateType: 'custom'
+        customTemplateLocation: 'runner-images/images/ubuntu/ubuntu-22.04.pkr.hcl'
+        customTemplateParameters: |
+          {
+            "client_id": "$(ARM_CLIENT_ID)",
+            "client_secret": "$(ARM_CLIENT_SECRET)",
+            "tenant_id": "$(ARM_TENANT_ID)",
+            "subscription_id": "$(ARM_SUBSCRIPTION_ID)",
+            "managed_image_resource_group_name": "$(resourceGroup)",
+            "gallery_name": "$(imageGalleryName)",
+            "gallery_image_definition": "$(imageDefinitionName)",
+            "location": "$(location)",
+            "vm_size": "Standard_D4s_v4"
+          }
+        packerVersion: '1.9.4'
+
+    - script: |
+        # The runner-images build process creates detailed software reports
+        echo "## Installed Software Report" > $(Build.ArtifactStagingDirectory)/software-report.md
+        cat runner-images/images/ubuntu/software-report.md >> $(Build.ArtifactStagingDirectory)/software-report.md
+      displayName: 'Generate Software Report'
+
+    - task: PublishBuildArtifacts@1
+      inputs:
+        pathToPublish: '$(Build.ArtifactStagingDirectory)'
+        artifactName: 'SoftwareReport'

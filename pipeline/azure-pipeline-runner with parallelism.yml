@@ -1,0 +1,293 @@
+# azure-pipelines-custom-agent.yml
+trigger:
+  branches:
+    include:
+    - main
+  paths:
+    include:
+    - agent-build/*
+
+schedules:
+- cron: "0 2 * * *"  # Nightly at 02:00
+  displayName: Nightly Agent Build
+  branches:
+    include:
+    - main
+  always: true
+
+variables:
+  agentVersion: '3.232.0'  # Update as needed
+  agentPoolName: 'KaiAgents'
+  vmssName: 'kai-agents-vmss'
+  resourceGroupName: 'kai-agents-rg'
+  imageResourceGroup: 'kai-images-rg'
+  customImageName: 'kai-custom-agent-$(Build.BuildNumber)'
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+stages:
+- stage: BuildAgent
+  displayName: 'Build Custom Agent'
+  jobs:
+  - job: BuildLinuxAgent
+    displayName: 'Build Linux x64 Agent'
+    steps:
+    - checkout: self
+      fetchDepth: 1
+
+    - task: Bash@3
+      displayName: 'Clone Azure Pipelines Agent Repo'
+      inputs:
+        targetType: 'inline'
+        script: |
+          git clone https://github.com/Microsoft/azure-pipelines-agent.git
+          cd azure-pipelines-agent
+          git checkout releases/$(agentVersion)
+
+    - task: UseDotNet@2
+      displayName: 'Install .NET SDK'
+      inputs:
+        packageType: 'sdk'
+        version: '6.x'
+
+    - task: Bash@3
+      displayName: 'Build Agent'
+      inputs:
+        targetType: 'inline'
+        script: |
+          cd azure-pipelines-agent/src
+          ./dev.sh layout Release linux-x64
+          ./dev.sh package Release linux-x64
+
+    - task: CopyFiles@2
+      displayName: 'Copy Agent Package'
+      inputs:
+        SourceFolder: 'azure-pipelines-agent/_package'
+        Contents: 'vsts-agent-linux-x64-*.tar.gz'
+        TargetFolder: '$(Build.ArtifactStagingDirectory)'
+
+    - task: PublishPipelineArtifact@1
+      displayName: 'Publish Agent Artifact'
+      inputs:
+        targetPath: '$(Build.ArtifactStagingDirectory)'
+        artifactName: 'custom-agent'
+
+- stage: CreateVMImage
+  displayName: 'Create VM Image'
+  dependsOn: BuildAgent
+  jobs:
+  - job: CreateImage
+    displayName: 'Create Custom VM Image'
+    steps:
+    - download: current
+      artifact: custom-agent
+
+    - task: AzureCLI@2
+      displayName: 'Create Custom VM Image'
+      inputs:
+        azureSubscription: 'your-service-connection'
+        scriptType: 'bash'
+        scriptLocation: 'inlineScript'
+        inlineScript: |
+          # Create a temporary VM for image creation
+          az vm create \
+            --resource-group $(imageResourceGroup) \
+            --name temp-agent-vm \
+            --image Ubuntu2204 \
+            --size Standard_D2s_v3 \
+            --admin-username azureuser \
+            --generate-ssh-keys \
+            --public-ip-address "" \
+            --nsg ""
+
+          # Get VM details
+          VM_IP=$(az vm show -d --resource-group $(imageResourceGroup) --name temp-agent-vm --query privateIps -o tsv)
+          
+          # Create custom script for VM setup
+          cat > setup-agent.sh << 'EOF'
+          #!/bin/bash
+          set -e
+          
+          # Update system
+          sudo apt-get update && sudo apt-get upgrade -y
+          
+          # Install dependencies
+          sudo apt-get install -y \
+            curl \
+            wget \
+            git \
+            jq \
+            zip \
+            unzip \
+            apt-transport-https \
+            ca-certificates \
+            gnupg \
+            lsb-release \
+            software-properties-common
+          
+          # Install Docker
+          curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg
+          echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+          sudo apt-get update
+          sudo apt-get install -y docker-ce docker-ce-cli containerd.io
+          sudo usermod -aG docker azureuser
+          
+          # Install .NET
+          wget https://packages.microsoft.com/config/ubuntu/22.04/packages-microsoft-prod.deb -O packages-microsoft-prod.deb
+          sudo dpkg -i packages-microsoft-prod.deb
+          sudo apt-get update
+          sudo apt-get install -y dotnet-sdk-6.0
+          
+          # Install Azure CLI
+          curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash
+          
+          # Create agent user
+          sudo useradd -m -s /bin/bash agent
+          sudo usermod -aG docker agent
+          
+          # Create agent directory
+          sudo mkdir -p /opt/agent
+          sudo chown agent:agent /opt/agent
+          
+          # Setup agent service template
+          sudo tee /etc/systemd/system/azure-pipelines-agent.service > /dev/null << 'EOSERVICE'
+          [Unit]
+          Description=Azure Pipelines Agent
+          After=network.target
+          
+          [Service]
+          Type=simple
+          User=agent
+          WorkingDirectory=/opt/agent
+          ExecStart=/opt/agent/run.sh
+          Restart=always
+          RestartSec=30
+          
+          [Install]
+          WantedBy=multi-user.target
+          EOSERVICE
+          
+          sudo systemctl daemon-reload
+          EOF
+          
+          # Copy and execute setup script
+          az vm run-command invoke \
+            --resource-group $(imageResourceGroup) \
+            --name temp-agent-vm \
+            --command-id RunShellScript \
+            --scripts @setup-agent.sh
+
+    - task: AzureCLI@2
+      displayName: 'Install Custom Agent on VM'
+      inputs:
+        azureSubscription: 'your-service-connection'
+        scriptType: 'bash'
+        scriptLocation: 'inlineScript'
+        inlineScript: |
+          # Copy agent package to VM
+          AGENT_FILE=$(ls $(Pipeline.Workspace)/custom-agent/vsts-agent-linux-x64-*.tar.gz)
+          
+          # Create install script
+          cat > install-agent.sh << 'EOF'
+          #!/bin/bash
+          set -e
+          
+          # Extract agent
+          cd /opt/agent
+          sudo -u agent tar -xzf /tmp/agent.tar.gz
+          
+          # Create auto-registration script
+          sudo -u agent tee /opt/agent/register.sh > /dev/null << 'EOREG'
+          #!/bin/bash
+          set -e
+          
+          # Get instance metadata
+          INSTANCE_NAME=$(curl -s -H Metadata:true "http://169.254.169.254/metadata/instance/compute/name?api-version=2021-02-01&format=text")
+          
+          # Configure agent
+          ./config.sh \
+            --unattended \
+            --url "$(AZURE_DEVOPS_URL)" \
+            --auth pat \
+            --token "$(AGENT_PAT)" \
+            --pool "$(agentPoolName)" \
+            --agent "${INSTANCE_NAME}" \
+            --replace \
+            --acceptTeeEula
+          EOREG
+          
+          chmod +x /opt/agent/register.sh
+          
+          # Create startup script that registers and runs
+          sudo -u agent tee /opt/agent/run.sh > /dev/null << 'EORUN'
+          #!/bin/bash
+          set -e
+          
+          cd /opt/agent
+          
+          # Register if not already registered
+          if [ ! -f .agent ]; then
+            ./register.sh
+          fi
+          
+          # Run agent
+          ./run.sh
+          EORUN
+          
+          chmod +x /opt/agent/run.sh
+          EOF
+          
+          # Upload agent package
+          az vm run-command invoke \
+            --resource-group $(imageResourceGroup) \
+            --name temp-agent-vm \
+            --command-id RunShellScript \
+            --scripts "sudo mkdir -p /tmp && echo 'Ready for upload'"
+          
+          # Copy files (you may need to use SCP or other method depending on your setup)
+          # This is a simplified approach - in practice you might use Azure Storage
+          
+          echo "Agent installation script created"
+
+    - task: AzureCLI@2
+      displayName: 'Create VM Image'
+      inputs:
+        azureSubscription: 'your-service-connection'
+        scriptType: 'bash'
+        scriptLocation: 'inlineScript'
+        inlineScript: |
+          # Generalize VM
+          az vm run-command invoke \
+            --resource-group $(imageResourceGroup) \
+            --name temp-agent-vm \
+            --command-id RunShellScript \
+            --scripts "sudo waagent -deprovision+user -force"
+          
+          # Deallocate VM
+          az vm deallocate \
+            --resource-group $(imageResourceGroup) \
+            --name temp-agent-vm
+          
+          # Generalize VM
+          az vm generalize \
+            --resource-group $(imageResourceGroup) \
+            --name temp-agent-vm
+          
+          # Create image
+          az image create \
+            --resource-group $(imageResourceGroup) \
+            --name $(customImageName) \
+            --source temp-agent-vm
+          
+          # Clean up temp VM
+          az vm delete \
+            --resource-group $(imageResourceGroup) \
+            --name temp-agent-vm \
+            --yes
+
+- stage: UpdateVMSS
+  displayName: 'Update VMSS'
+  dependsOn: CreateVMImage
+  jobs:
+  - job: UpdateScaleSet
