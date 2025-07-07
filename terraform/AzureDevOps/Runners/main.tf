@@ -91,8 +91,7 @@ resource "azuredevops_build_definition" "pipeline_runner" {
     repo_type           = "TfsGit"
     repo_id             = azuredevops_git_repository.plz_msrunners_repo.id
     branch_name         = "refs/heads/main"
-#    branch_name         = "refs/heads/develop"
-    yml_path            = "/pipeline/azure-pipeline-runner.yml"
+    yml_path            = "/pipeline/azure-pipeline-modified.yml"
     report_build_status = true
   }
 
