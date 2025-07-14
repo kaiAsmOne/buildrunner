@@ -20,6 +20,8 @@ variables:
   agentPool: 'KaisPool'
   runnerImagesRepo: 'https://github.com/actions/runner-images.git'
   runnerImagesRef: 'main'  # or specific release tag
+  Agent.WorkFolder: /home/kaithors/agent/_work
+  Agent.HomeDirectory: /home/kaithors/agent
 
 stages:
 - stage: BuildRunnerImage
